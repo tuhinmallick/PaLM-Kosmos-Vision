@@ -48,9 +48,7 @@ def get_image_caption(image_data):
         "lucataco/kosmos-2:3e7b211c29c092f4bcc8853922cc986baa52efe255876b80cac2c2fbb4aff805",
         input=input_data
     )
-    # Split the output string on the newline character and take the first item
-    text_description = output.split('\n\n')[0]
-    return text_description
+    return output.split('\n\n')[0]
 
 # Function to create the chat engine.
 @st.cache_resource
@@ -60,18 +58,13 @@ def create_chat_engine(img_desc, api_key):
     doc = Document(text=img_desc)
     index = VectorStoreIndex.from_documents([doc], service_context=service_context)
     chatmemory = ChatMemoryBuffer.from_defaults(token_limit=1500)
-    
-    chat_engine = index.as_chat_engine(
+
+    return index.as_chat_engine(
         chat_mode="context",
-        system_prompt=(
-            f"You are a chatbot, able to have normal interactions, as well as talk. "
-            "You always answer in great detail and are polite. Your responses always descriptive. "
-            "Your job is to talk about an image the user has uploaded. Image description: {img_desc}."
-        ),
+        system_prompt='You are a chatbot, able to have normal interactions, as well as talk. You always answer in great detail and are polite. Your responses always descriptive. Your job is to talk about an image the user has uploaded. Image description: {img_desc}.',
         verbose=True,
-        memory=chatmemory
+        memory=chatmemory,
     )
-    return chat_engine
 
 # Clear chat function
 def clear_chat():
@@ -86,11 +79,7 @@ def on_image_upload():
 
 # Retrieve the message count from cookies
 message_count = cookie_manager.get(cookie='message_count')
-if message_count is None:
-    message_count = 0
-else:
-    message_count = int(message_count)
-
+message_count = 0 if message_count is None else int(message_count)
 # If the message limit has been reached, disable the inputs
 if message_count >= 20:
     st.error("Notice: The maximum message limit for this demo version has been reached.")
@@ -135,27 +124,27 @@ else:
             st.markdown(user_input)
 
         # Call the chat engine to get the response if an image has been uploaded
-        if image_file and user_input:
-            try:
-                with st.spinner('Waiting for the chat engine to respond...'):
-                    # Get the response from your chat engine
-                    response = chat_engine.chat(user_input)
-        
-                # Append assistant message to the session state
-                st.session_state.messages.append({"role": "assistant", "content": response})
-        
-                # Display the assistant message
-                with st.chat_message("assistant"):
-                    st.markdown(response)
-        
-            except Exception as e:
-                st.error(f'An error occurred.')
-                # Optionally, you can choose to break the flow here if a critical error happens
-                # return
-        
-            # Increment the message count and update the cookie
-            message_count += 1
-            cookie_manager.set('message_count', str(message_count), expires_at=datetime.datetime.now() + datetime.timedelta(days=30))
+    if image_file and user_input:
+        try:
+            with st.spinner('Waiting for the chat engine to respond...'):
+                # Get the response from your chat engine
+                response = chat_engine.chat(user_input)
+
+            # Append assistant message to the session state
+            st.session_state.messages.append({"role": "assistant", "content": response})
+
+            # Display the assistant message
+            with st.chat_message("assistant"):
+                st.markdown(response)
+
+        except Exception as e:
+            st.error('An error occurred.')
+                        # Optionally, you can choose to break the flow here if a critical error happens
+                        # return
+
+        # Increment the message count and update the cookie
+        message_count += 1
+        cookie_manager.set('message_count', str(message_count), expires_at=datetime.datetime.now() + datetime.timedelta(days=30))
 
 
 
